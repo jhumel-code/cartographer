@@ -1,0 +1,28 @@
+bin/
+*.log
+*.tmp
+.env
+.env.local
+.env.*.local
+coverage.out
+coverage.html
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Test artifacts
+test-output/
+testdata/temp/
+
+# Distribution files
+dist/
+release/
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Go specific
+vendor/
