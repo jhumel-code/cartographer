@@ -47,7 +47,6 @@ func (i *InfrastructureAnalyzer) Scan(ctx context.Context, source artifact.Sourc
 		}
 
 		fileName := strings.ToLower(info.Name())
-		filePath := strings.ToLower(path)
 		relPath, _ := filepath.Rel(source.Location, path)
 
 		var artifactType artifact.Type
@@ -72,18 +71,7 @@ func (i *InfrastructureAnalyzer) Scan(ctx context.Context, source artifact.Sourc
 				"file_type": "yaml",
 			}
 
-		// Kubernetes
-		case strings.HasSuffix(fileName, ".yaml") || strings.HasSuffix(fileName, ".yml"):
-			if i.isKubernetesManifest(path) {
-				artifactType = artifact.TypeKubernetesManifest
-				metadata = map[string]string{
-					"iac_type":  "container-orchestration",
-					"platform":  "kubernetes",
-					"file_type": "yaml",
-				}
-			}
-
-		// Helm
+		// Helm (check before generic Kubernetes)
 		case fileName == "chart.yaml" || fileName == "chart.yml":
 			artifactType = artifact.TypeHelmChart
 			metadata = map[string]string{
@@ -92,12 +80,57 @@ func (i *InfrastructureAnalyzer) Scan(ctx context.Context, source artifact.Sourc
 				"file_type": "chart-definition",
 			}
 		case fileName == "values.yaml" || fileName == "values.yml":
-			if strings.Contains(filePath, "chart") || strings.Contains(filePath, "helm") {
+			if strings.Contains(relPath, "chart") || strings.Contains(relPath, "helm") {
 				artifactType = artifact.TypeHelmChart
 				metadata = map[string]string{
 					"iac_type":  "package-manager",
 					"platform":  "helm",
 					"file_type": "values",
+				}
+			}
+
+		// Pulumi project files (check before general YAML handling)
+		case fileName == "pulumi.yaml" || fileName == "pulumi.yml" || fileName == "Pulumi.yaml" || fileName == "Pulumi.yml":
+			artifactType = artifact.TypePulumi
+			metadata = map[string]string{
+				"iac_type":  "cloud-provisioning",
+				"platform":  "pulumi",
+				"file_type": "project-config",
+			}
+
+		// YAML/YML files (Kubernetes, Ansible, CloudFormation, Google Cloud Deployment)
+		case strings.HasSuffix(fileName, ".yaml") || strings.HasSuffix(fileName, ".yml"):
+			// Try Kubernetes first
+			if i.isKubernetesManifest(path) {
+				artifactType = artifact.TypeKubernetesManifest
+				metadata = map[string]string{
+					"iac_type":  "container-orchestration",
+					"platform":  "kubernetes",
+					"file_type": "yaml",
+				}
+			} else if i.isAnsiblePlaybook(path) {
+				// Try Ansible if not Kubernetes
+				artifactType = artifact.TypeAnsiblePlaybook
+				metadata = map[string]string{
+					"iac_type":  "configuration-management",
+					"platform":  "ansible",
+					"file_type": "playbook",
+				}
+			} else if i.isCloudFormationTemplate(path) {
+				// Try CloudFormation if not Kubernetes or Ansible
+				artifactType = artifact.TypeCloudFormation
+				metadata = map[string]string{
+					"iac_type":  "cloud-provisioning",
+					"platform":  "aws-cloudformation",
+					"file_type": "yaml",
+				}
+			} else if i.isGoogleCloudDeployment(path) {
+				// Try Google Cloud Deployment if none of the above
+				artifactType = artifact.TypeGoogleCloudDeployment
+				metadata = map[string]string{
+					"iac_type":  "cloud-provisioning",
+					"platform":  "google-cloud-deployment",
+					"file_type": "yaml",
 				}
 			}
 
@@ -124,16 +157,7 @@ func (i *InfrastructureAnalyzer) Scan(ctx context.Context, source artifact.Sourc
 				"file_type": "configuration",
 			}
 
-		// Ansible
-		case strings.HasSuffix(fileName, ".yml") || strings.HasSuffix(fileName, ".yaml"):
-			if i.isAnsiblePlaybook(path) {
-				artifactType = artifact.TypeAnsiblePlaybook
-				metadata = map[string]string{
-					"iac_type":  "configuration-management",
-					"platform":  "ansible",
-					"file_type": "playbook",
-				}
-			}
+		// Ansible config files
 		case fileName == "ansible.cfg":
 			artifactType = artifact.TypeAnsiblePlaybook
 			metadata = map[string]string{
@@ -151,51 +175,17 @@ func (i *InfrastructureAnalyzer) Scan(ctx context.Context, source artifact.Sourc
 				"file_type": "ruby",
 			}
 
-		// AWS CloudFormation
-		case strings.HasSuffix(fileName, ".json") || strings.HasSuffix(fileName, ".yaml") || strings.HasSuffix(fileName, ".yml"):
+		// AWS CloudFormation (JSON only, YAML handled above)
+		case strings.HasSuffix(fileName, ".json"):
 			if i.isCloudFormationTemplate(path) {
 				artifactType = artifact.TypeCloudFormation
 				metadata = map[string]string{
 					"iac_type":  "cloud-provisioning",
 					"platform":  "aws-cloudformation",
-					"file_type": filepath.Ext(fileName)[1:],
+					"file_type": "json",
 				}
-			}
-
-		// AWS CDK
-		case strings.HasSuffix(fileName, ".ts") || strings.HasSuffix(fileName, ".js") ||
-			strings.HasSuffix(fileName, ".py") || strings.HasSuffix(fileName, ".java"):
-			if i.isAWSCDKFile(path) {
-				artifactType = artifact.TypeAWSCDK
-				metadata = map[string]string{
-					"iac_type":  "cloud-provisioning",
-					"platform":  "aws-cdk",
-					"file_type": filepath.Ext(fileName)[1:],
-				}
-			}
-
-		// Pulumi
-		case strings.HasSuffix(fileName, ".ts") || strings.HasSuffix(fileName, ".js") ||
-			strings.HasSuffix(fileName, ".py") || strings.HasSuffix(fileName, ".go"):
-			if i.isPulumiProject(path) {
-				artifactType = artifact.TypePulumi
-				metadata = map[string]string{
-					"iac_type":  "cloud-provisioning",
-					"platform":  "pulumi",
-					"file_type": filepath.Ext(fileName)[1:],
-				}
-			}
-		case fileName == "pulumi.yaml" || fileName == "pulumi.yml":
-			artifactType = artifact.TypePulumi
-			metadata = map[string]string{
-				"iac_type":  "cloud-provisioning",
-				"platform":  "pulumi",
-				"file_type": "project-config",
-			}
-
-		// Azure Resource Manager
-		case strings.HasSuffix(fileName, ".json"):
-			if i.isAzureARMTemplate(path) {
+			} else if i.isAzureARMTemplate(path) {
+				// Also check for Azure ARM templates in JSON files
 				artifactType = artifact.TypeAzureResourceManager
 				metadata = map[string]string{
 					"iac_type":  "cloud-provisioning",
@@ -204,16 +194,25 @@ func (i *InfrastructureAnalyzer) Scan(ctx context.Context, source artifact.Sourc
 				}
 			}
 
-		// Google Cloud Deployment Manager
-		case strings.HasSuffix(fileName, ".yaml") || strings.HasSuffix(fileName, ".yml"):
-			if i.isGoogleCloudDeployment(path) {
-				artifactType = artifact.TypeGoogleCloudDeployment
+		// TypeScript/JavaScript/Python/Java files (AWS CDK, Pulumi)
+		case strings.HasSuffix(fileName, ".ts") || strings.HasSuffix(fileName, ".js") ||
+			strings.HasSuffix(fileName, ".py") || strings.HasSuffix(fileName, ".java") || strings.HasSuffix(fileName, ".go"):
+			if i.isAWSCDKFile(path) {
+				artifactType = artifact.TypeAWSCDK
 				metadata = map[string]string{
 					"iac_type":  "cloud-provisioning",
-					"platform":  "google-cloud-deployment",
-					"file_type": "yaml",
+					"platform":  "aws-cdk",
+					"file_type": filepath.Ext(fileName)[1:],
+				}
+			} else if i.isPulumiProject(path) {
+				artifactType = artifact.TypePulumi
+				metadata = map[string]string{
+					"iac_type":  "cloud-provisioning",
+					"platform":  "pulumi",
+					"file_type": filepath.Ext(fileName)[1:],
 				}
 			}
+
 		}
 
 		if artifactType != "" {

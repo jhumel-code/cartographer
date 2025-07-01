@@ -106,7 +106,7 @@ func (c *CIAnalyzer) Scan(ctx context.Context, source artifact.Source) ([]artifa
 			}
 
 		// GitHub Actions
-		case strings.Contains(filePath, ".github/workflows/") &&
+		case strings.Contains(strings.ReplaceAll(filePath, "\\", "/"), ".github/workflows/") &&
 			(strings.HasSuffix(fileName, ".yml") || strings.HasSuffix(fileName, ".yaml")):
 			artifactType = artifact.TypeGitHubActions
 			metadata = map[string]string{
@@ -125,7 +125,7 @@ func (c *CIAnalyzer) Scan(ctx context.Context, source artifact.Source) ([]artifa
 			}
 
 		// CircleCI
-		case strings.Contains(filePath, ".circleci/") && fileName == "config.yml":
+		case strings.Contains(strings.ReplaceAll(filePath, "\\", "/"), ".circleci/") && fileName == "config.yml":
 			artifactType = artifact.TypeCircleCI
 			metadata = map[string]string{
 				"ci_system": "circleci",
@@ -153,7 +153,7 @@ func (c *CIAnalyzer) Scan(ctx context.Context, source artifact.Source) ([]artifa
 			}
 
 		// Buildkite
-		case strings.Contains(filePath, ".buildkite/") && fileName == "pipeline.yml":
+		case strings.Contains(strings.ReplaceAll(filePath, "\\", "/"), ".buildkite/") && fileName == "pipeline.yml":
 			artifactType = artifact.TypeBuildkite
 			metadata = map[string]string{
 				"ci_system": "buildkite",

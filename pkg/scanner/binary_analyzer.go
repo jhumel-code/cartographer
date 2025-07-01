@@ -8,7 +8,10 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/ianjhumelbautista/cartographer/pkg/artifact"
@@ -113,6 +116,12 @@ func (b *BinaryAnalyzer) analyzeBinary(path string, info fs.FileInfo, source art
 		// Binary analysis successful
 	}
 
+	// Extract version information using multiple methods
+	if version := b.extractBinaryVersion(path, artifact); version != "" {
+		artifact.Version = version
+		artifact.Metadata["version_method"] = artifact.Metadata["version_detection_method"]
+	}
+
 	// Extract dynamic dependencies
 	deps, err := b.extractDynamicDependencies(path)
 	if err == nil && len(deps) > 0 {
@@ -150,8 +159,9 @@ func (b *BinaryAnalyzer) extractBinaryMetadata(path string, art *artifact.Artifa
 		art.Metadata["type"] = elfFile.Type.String()
 
 		// Extract version information if available
-		if version := b.extractELFVersion(elfFile); version != "" {
+		if version := b.extractELFVersionFromMetadata(elfFile); version != "" {
 			art.Version = version
+			art.Metadata["version_detection_method"] = "elf_metadata"
 		}
 
 		return nil
@@ -196,20 +206,22 @@ func (b *BinaryAnalyzer) extractBinaryMetadata(path string, art *artifact.Artifa
 	return nil
 }
 
-// extractELFVersion attempts to extract version information from ELF files
-func (b *BinaryAnalyzer) extractELFVersion(elfFile *elf.File) string {
-	// Try to find version in dynamic section
+// extractELFVersionFromMetadata attempts to extract version information from ELF files quickly
+func (b *BinaryAnalyzer) extractELFVersionFromMetadata(elfFile *elf.File) string {
+	// Try to find version in dynamic symbols
 	if symbols, err := elfFile.DynamicSymbols(); err == nil {
 		for _, symbol := range symbols {
-			if strings.Contains(symbol.Name, "version") || strings.Contains(symbol.Name, "VERSION") {
-				return symbol.Name
+			if strings.Contains(strings.ToLower(symbol.Name), "version") {
+				// This is a simplified extraction - in practice you'd parse the symbol more carefully
+				return "detected"
 			}
 		}
 	}
 
-	// Try to extract from section names
+	// Check for version sections
 	for _, section := range elfFile.Sections {
-		if strings.Contains(section.Name, "version") {
+		sectionName := strings.ToLower(section.Name)
+		if strings.Contains(sectionName, "version") || strings.Contains(sectionName, ".note") {
 			return "detected"
 		}
 	}
@@ -242,4 +254,351 @@ func (b *BinaryAnalyzer) extractDynamicDependencies(path string) ([]string, erro
 	// For non-ELF files, we could use external tools like ldd, otool, etc.
 	// For now, return empty list
 	return dependencies, nil
+}
+
+// extractBinaryVersion attempts to extract version information using multiple methods
+func (b *BinaryAnalyzer) extractBinaryVersion(path string, art *artifact.Artifact) string {
+	// Method 1: Try --version flag (most common)
+	if version := b.tryVersionFlag(path); version != "" {
+		art.Metadata["version_detection_method"] = "command_line_flag"
+		return version
+	}
+
+	// Method 2: Parse from file metadata/resources (Windows PE)
+	if version := b.extractPEVersionInfo(path); version != "" {
+		art.Metadata["version_detection_method"] = "pe_version_info"
+		return version
+	}
+
+	// Method 3: Extract from ELF version sections
+	if version := b.extractELFVersionInfo(path); version != "" {
+		art.Metadata["version_detection_method"] = "elf_version_section"
+		return version
+	}
+
+	// Method 4: Extract from Mach-O version info
+	if version := b.extractMachoVersionInfo(path); version != "" {
+		art.Metadata["version_detection_method"] = "macho_version_info"
+		return version
+	}
+
+	// Method 5: Parse from binary strings (last resort)
+	if version := b.extractVersionFromStrings(path); version != "" {
+		art.Metadata["version_detection_method"] = "string_analysis"
+		return version
+	}
+
+	// Method 6: Check filename for version patterns
+	if version := b.extractVersionFromFilename(filepath.Base(path)); version != "" {
+		art.Metadata["version_detection_method"] = "filename_pattern"
+		return version
+	}
+
+	art.Metadata["version_detection_method"] = "none"
+	return ""
+}
+
+// tryVersionFlag attempts to get version by running the binary with common version flags
+func (b *BinaryAnalyzer) tryVersionFlag(path string) string {
+	versionFlags := []string{"--version", "-v", "-V", "--V", "version", "/version"}
+
+	for _, flag := range versionFlags {
+		cmd := exec.Command(path, flag)
+		output, err := cmd.Output()
+		if err != nil {
+			continue
+		}
+
+		if version := b.parseVersionFromOutput(string(output)); version != "" {
+			return version
+		}
+	}
+
+	// Try just running the binary (some show version info by default)
+	cmd := exec.Command(path)
+	output, err := cmd.Output()
+	if err == nil {
+		if version := b.parseVersionFromOutput(string(output)); version != "" {
+			return version
+		}
+	}
+
+	return ""
+}
+
+// parseVersionFromOutput extracts version from command output
+func (b *BinaryAnalyzer) parseVersionFromOutput(output string) string {
+	// Common version patterns
+	patterns := []string{
+		`(?i)version\s+(\d+(?:\.\d+)*(?:-[a-zA-Z0-9]+)?)`,
+		`(?i)v(\d+(?:\.\d+)*(?:-[a-zA-Z0-9]+)?)`,
+		`(\d+\.\d+(?:\.\d+)*(?:-[a-zA-Z0-9]+)?)`,
+		`(?i)release\s+(\d+(?:\.\d+)*(?:-[a-zA-Z0-9]+)?)`,
+		`(?i)build\s+(\d+(?:\.\d+)*(?:-[a-zA-Z0-9]+)?)`,
+	}
+
+	for _, pattern := range patterns {
+		re := regexp.MustCompile(pattern)
+		if matches := re.FindStringSubmatch(output); len(matches) > 1 {
+			return strings.TrimSpace(matches[1])
+		}
+	}
+
+	return ""
+}
+
+// extractPEVersionInfo extracts version from Windows PE files
+func (b *BinaryAnalyzer) extractPEVersionInfo(path string) string {
+	file, err := os.Open(path)
+	if err != nil {
+		return ""
+	}
+	defer file.Close()
+
+	peFile, err := pe.NewFile(file)
+	if err != nil {
+		return ""
+	}
+	defer peFile.Close()
+
+	// Look for version info in resources
+	// This is a simplified approach - a full implementation would parse VS_VERSION_INFO
+	for _, section := range peFile.Sections {
+		if strings.Contains(section.Name, ".rsrc") {
+			// Read resource section and look for version patterns
+			data, err := section.Data()
+			if err != nil {
+				continue
+			}
+
+			if version := b.extractVersionFromData(data); version != "" {
+				return version
+			}
+		}
+	}
+
+	return ""
+}
+
+// extractELFVersionInfo extracts version from ELF files
+func (b *BinaryAnalyzer) extractELFVersionInfo(path string) string {
+	file, err := os.Open(path)
+	if err != nil {
+		return ""
+	}
+	defer file.Close()
+
+	elfFile, err := elf.NewFile(file)
+	if err != nil {
+		return ""
+	}
+	defer elfFile.Close()
+
+	// Check .note sections for version information
+	for _, section := range elfFile.Sections {
+		if section.Type == elf.SHT_NOTE {
+			data, err := section.Data()
+			if err != nil {
+				continue
+			}
+
+			if version := b.extractVersionFromData(data); version != "" {
+				return version
+			}
+		}
+	}
+
+	// Check .comment section
+	if commentSection := elfFile.Section(".comment"); commentSection != nil {
+		data, err := commentSection.Data()
+		if err == nil {
+			if version := b.extractVersionFromData(data); version != "" {
+				return version
+			}
+		}
+	}
+
+	// Check .gnu.version_r and .gnu.version_d sections
+	if versionSection := elfFile.Section(".gnu.version_r"); versionSection != nil {
+		data, err := versionSection.Data()
+		if err == nil {
+			if version := b.extractVersionFromData(data); version != "" {
+				return version
+			}
+		}
+	}
+
+	return ""
+}
+
+// extractMachoVersionInfo extracts version from Mach-O files
+func (b *BinaryAnalyzer) extractMachoVersionInfo(path string) string {
+	file, err := os.Open(path)
+	if err != nil {
+		return ""
+	}
+	defer file.Close()
+
+	machoFile, err := macho.NewFile(file)
+	if err != nil {
+		return ""
+	}
+	defer machoFile.Close()
+
+	// Check for version in load commands
+	for _, load := range machoFile.Loads {
+		switch cmd := load.(type) {
+		case *macho.Dylib:
+			if cmd.Name != "" && strings.Contains(cmd.Name, "version") {
+				// Extract version from dylib info
+				version := fmt.Sprintf("%d.%d.%d",
+					cmd.CurrentVersion>>16,
+					(cmd.CurrentVersion>>8)&0xFF,
+					cmd.CurrentVersion&0xFF)
+				if version != "0.0.0" {
+					return version
+				}
+			}
+		}
+	}
+
+	// Check sections for version info
+	for _, section := range machoFile.Sections {
+		if strings.Contains(section.Name, "version") || strings.Contains(section.Name, "__info_plist") {
+			data, err := section.Data()
+			if err != nil {
+				continue
+			}
+
+			if version := b.extractVersionFromData(data); version != "" {
+				return version
+			}
+		}
+	}
+
+	return ""
+}
+
+// extractVersionFromStrings extracts version by analyzing strings in the binary
+func (b *BinaryAnalyzer) extractVersionFromStrings(path string) string {
+	// Use strings command if available, otherwise read file directly
+	cmd := exec.Command("strings", path)
+	output, err := cmd.Output()
+	if err == nil {
+		return b.parseVersionFromOutput(string(output))
+	}
+
+	// Fallback: read file and look for printable strings
+	file, err := os.Open(path)
+	if err != nil {
+		return ""
+	}
+	defer file.Close()
+
+	// Read first 64KB to avoid processing huge binaries
+	buffer := make([]byte, 65536)
+	n, err := file.Read(buffer)
+	if err != nil && n == 0 {
+		return ""
+	}
+
+	return b.extractVersionFromData(buffer[:n])
+}
+
+// extractVersionFromData extracts version patterns from binary data
+func (b *BinaryAnalyzer) extractVersionFromData(data []byte) string {
+	// Convert to string and look for version patterns
+	str := string(data)
+
+	// Common version patterns in binaries
+	patterns := []string{
+		`(?i)version[:=\s]+(\d+(?:\.\d+)*(?:-[a-zA-Z0-9._-]+)?)`,
+		`(?i)v(\d+\.\d+(?:\.\d+)*(?:-[a-zA-Z0-9._-]+)?)`,
+		`(\d+\.\d+\.\d+(?:\.\d+)*(?:-[a-zA-Z0-9._-]+)?)`,
+		`(?i)release[:=\s]+(\d+(?:\.\d+)*(?:-[a-zA-Z0-9._-]+)?)`,
+		`(?i)build[:=\s]+(\d+(?:\.\d+)*(?:-[a-zA-Z0-9._-]+)?)`,
+		`(?i)\b(\d+\.\d+(?:\.\d+)*)\b`,
+	}
+
+	for _, pattern := range patterns {
+		re := regexp.MustCompile(pattern)
+		matches := re.FindAllStringSubmatch(str, -1)
+
+		for _, match := range matches {
+			if len(match) > 1 {
+				version := strings.TrimSpace(match[1])
+				// Validate it looks like a real version
+				if b.isValidVersion(version) {
+					return version
+				}
+			}
+		}
+	}
+
+	return ""
+}
+
+// extractVersionFromFilename extracts version from filename patterns
+func (b *BinaryAnalyzer) extractVersionFromFilename(filename string) string {
+	// Remove common extensions
+	name := strings.TrimSuffix(filename, filepath.Ext(filename))
+
+	// Common filename version patterns
+	patterns := []string{
+		`([^-_\s]+)[-_]v?(\d+(?:\.\d+)*(?:-[a-zA-Z0-9._-]+)?)`,
+		`([^-_\s]+)-(\d+\.\d+(?:\.\d+)*)`,
+		`([^-_\s]+)_(\d+\.\d+(?:\.\d+)*)`,
+		`([^-_\s]+)(\d+\.\d+(?:\.\d+)*)`,
+	}
+
+	for _, pattern := range patterns {
+		re := regexp.MustCompile(pattern)
+		if matches := re.FindStringSubmatch(name); len(matches) > 2 {
+			version := strings.TrimSpace(matches[2])
+			if b.isValidVersion(version) {
+				return version
+			}
+		}
+	}
+
+	return ""
+}
+
+// isValidVersion validates if a string looks like a valid version number
+func (b *BinaryAnalyzer) isValidVersion(version string) bool {
+	if version == "" {
+		return false
+	}
+
+	// Must start with a digit
+	if !strings.HasPrefix(version, "0") && !strings.HasPrefix(version, "1") &&
+		!strings.HasPrefix(version, "2") && !strings.HasPrefix(version, "3") &&
+		!strings.HasPrefix(version, "4") && !strings.HasPrefix(version, "5") &&
+		!strings.HasPrefix(version, "6") && !strings.HasPrefix(version, "7") &&
+		!strings.HasPrefix(version, "8") && !strings.HasPrefix(version, "9") {
+		return false
+	}
+
+	// Should contain at least one dot for major.minor format
+	if !strings.Contains(version, ".") {
+		// Allow single numbers only if they're reasonable (not dates, addresses, etc.)
+		if num, err := strconv.Atoi(version); err == nil {
+			return num > 0 && num < 1000 // Reasonable version range
+		}
+		return false
+	}
+
+	// Split and validate each component
+	parts := strings.Split(strings.Split(version, "-")[0], ".")
+	if len(parts) < 2 {
+		return false
+	}
+
+	for _, part := range parts {
+		if _, err := strconv.Atoi(part); err != nil {
+			return false
+		}
+	}
+
+	return true
 }
