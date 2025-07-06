@@ -2,66 +2,64 @@
 
 A comprehensive software artifact scanning and analysis tool for Docker images and filesystems. Cartographer automatically detects packages, dependencies, and software components to provide detailed insights into your software supply chain.
 
-## Features
+## Supported Artifact Types
 
-- **Multi-Source Scanning**: Analyze Docker images and filesystem paths
-- **Package Detection**: Comprehensive support for system and language package managers
-- **Binary Analysis**: Analyze executables, libraries, and system services
-- **Dependency Mapping**: Understand relationships between components
-- **JSON Output**: Structured results for integration with other tools
+> **Note**: This section distinguishes between fully implemented scanners (✅), partially implemented/placeholder scanners (🟡), and planned future implementations (📋).
 
-## Installation
+### Language Package Managers - **FULLY IMPLEMENTED** ✅
+These package managers have complete scanner implementations with real parsing logic:
 
-### Build from Source
-```bash
-git clone https://github.com/ianjhumelbautista/cartographer.git
-cd cartographer
-make build
-```
+- **Node.js**: NPM (`package.json`, `package-lock.json`), Yarn (`yarn.lock`)
+- **Python**: Pip (`requirements.txt`), Poetry (`poetry.lock`), Conda (`environment.yml`)
+- **Java**: Maven (`pom.xml`)
+- **Go**: Go modules (`go.mod`, `go.sum`)
+- **Rust**: Cargo (`Cargo.toml`, `Cargo.lock`)
+- **Ruby**: RubyGems (`Gemfile`, `Gemfile.lock`, `*.gemspec`)
+- **PHP**: Composer (`composer.json`, `composer.lock`)
 
-## Usage
+### System & Binary Analysis - **FULLY IMPLEMENTED** ✅
+These scanners have complete implementations with real analysis logic:
 
-### Scan a Docker Image
-```bash
-cartographer scan image nginx:latest
-cartographer scan image registry.example.com/myapp:v1.2.3
-```
+- **Binary Files**: Executables (`.exe`, `/bin/*`, `/sbin/*`), shared libraries (`.so`, `.dll`, `.dylib`)
+- **System Services**: systemd service files (`.service`)
+- **Configuration Files**: JSON, YAML, INI, properties, TOML, XML configs
 
-### Scan a Filesystem
-```bash
-cartographer scan filesystem .
-cartographer scan filesystem /usr/local
-```
+### Infrastructure as Code - **PARTIALLY IMPLEMENTED** 🟡
+- **Docker**: ✅ **Fully implemented** - Dockerfile parsing (base images, ports, user, workdir, entrypoint, cmd) and docker-compose.yml parsing (services, networks, volumes)
+- **Kubernetes**: 🟡 **Placeholder** - File detection only, no parsing logic
+- **Terraform**: 🟡 **Placeholder** - File detection only, no parsing logic  
+- **Ansible**: 🟡 **Placeholder** - File detection only, no parsing logic
 
-## Supported Package Managers
+### Security Artifacts - **PARTIALLY IMPLEMENTED** 🟡
+- **Certificates**: ✅ **Implemented** - PEM/DER certificate parsing with metadata extraction
+- **Private Keys**: ✅ **Implemented** - RSA/ECDSA key detection and metadata
+- **License Files**: ✅ **Implemented** - License detection and SPDX mapping
 
-### System Package Managers
-- **Debian/Ubuntu packages** (`dpkg`, `apt`)
-- **RPM packages** (RHEL, CentOS, Fedora, SUSE)
-- **Alpine packages** (`apk`)
-- **Arch Linux packages** (`pacman`)
-- **Gentoo packages** (`portage`)
-- **Snap packages**
-- **Flatpak packages**
-- **AppImage packages**
+### Planned Future Implementations 📋
+The following artifact types are defined in the codebase but do not yet have scanner implementations:
 
-### Language-Specific Package Managers
-- **Node.js** (`package.json`, `package-lock.json`, `yarn.lock`)
-- **Python** (`requirements.txt`, `Pipfile`, `pyproject.toml`)
-- **Go** (`go.mod`, `go.sum`)
-- **Rust** (`Cargo.toml`, `Cargo.lock`)
-- **Ruby** (`Gemfile`, `Gemfile.lock`)
-- **PHP** (`composer.json`, `composer.lock`)
-- **Java** (`pom.xml`, `build.gradle`)
-- **.NET** (`packages.config`, `packages.lock.json`)
-- **Swift** (`Package.swift`)
-- **Dart/Flutter** (`pubspec.yaml`)
-- **Elixir** (`mix.exs`, `mix.lock`)
-- **Haskell** (`stack.yaml`, `cabal.project`)
-- **R** (`DESCRIPTION`, `renv.lock`)
-- **C/C++** (`conanfile.txt`, `conan.lock`)
-- **iOS/macOS** (`Podfile`, `Podfile.lock`)
-- **Terraform** (`.tf` files, `terraform.lock.hcl`)
+#### Additional Package Managers
+- **.NET**: NuGet packages
+- **Haskell**: Cabal, Stack packages  
+- **Swift**: Swift Package Manager
+- **Dart**: Pub packages
+- **iOS/macOS**: CocoaPods, Carthage
+- **C/C++**: Conan, vcpkg packages
+- **R**: CRAN packages
+- **Elixir/Erlang**: Hex packages
+
+#### System Package Managers
+- **Linux**: dpkg (Debian/Ubuntu), RPM (Red Hat/CentOS/Fedora), apk (Alpine)
+- **Universal**: Snap, Flatpak, AppImage packages
+
+#### Build Systems & CI/CD
+- **Build Tools**: Makefiles, CMake, Meson, Bazel, SBT, Gradle wrapper
+- **CI/CD**: GitHub Actions, GitLab CI, CircleCI, Travis CI, Azure Pipelines
+
+#### Documentation & Web Assets
+- **Documentation**: README files, changelogs, man pages
+- **API Specs**: OpenAPI/Swagger, GraphQL schemas
+- **Web Assets**: HTML, CSS, JavaScript files
 
 ## Output Format
 
@@ -69,25 +67,68 @@ Cartographer outputs JSON reports with detected artifacts:
 
 ```json
 {
-  "metadata": {
-    "scan_id": "unique-scan-identifier",
-    "timestamp": "2025-07-01T12:00:00Z",
-    "target": "nginx:latest",
-    "scan_type": "image"
+  "id": "scan-abc123",
+  "source": {
+    "type": "docker-image",
+    "location": "node:18-alpine",
+    "metadata": {
+      "registry": "docker.io",
+      "repository": "library/node",
+      "tag": "18-alpine"
+    }
   },
+  "scan_time": "2025-07-06T12:00:00Z",
   "artifacts": [
     {
-      "id": "artifact-id",
-      "type": "debian-package",
-      "name": "openssl",
-      "version": "1.1.1f-1ubuntu2.20",
-      "locations": ["/var/lib/dpkg/status"],
+      "id": "npm-express-4.18.2",
+      "name": "express",
+      "version": "4.18.2",
+      "type": "npm-package",
+      "path": "/app/package-lock.json",
       "metadata": {
-        "architecture": "amd64",
-        "description": "Secure Sockets Layer toolkit"
+        "package_manager": "npm",
+        "source_file": "package-lock.json",
+        "dependency_type": "production",
+        "license": "MIT"
+      }
+    },
+    {
+      "id": "go-gin-v1.9.1",
+      "name": "github.com/gin-gonic/gin",
+      "version": "v1.9.1",
+      "type": "go-module",
+      "path": "/app/go.mod",
+      "metadata": {
+        "package_manager": "go",
+        "source_file": "go.mod",
+        "is_main_module": "false"
+      }
+    },
+    {
+      "id": "dockerfile-main",
+      "name": "Dockerfile",
+      "type": "dockerfile",
+      "path": "/app/Dockerfile",
+      "metadata": {
+        "base_images": "node:18-alpine",
+        "exposed_ports": "3000",
+        "workdir": "/app",
+        "user": "node"
       }
     }
-  ]
+  ],
+  "summary": {
+    "total_artifacts": 3,
+    "artifact_types": {
+      "npm-package": 1,
+      "go-module": 1,
+      "dockerfile": 1
+    }
+  },
+  "metadata": {
+    "scanner_version": "2.0.0-modular",
+    "scan_duration": "1.234s"
+  }
 }
 ```
 
