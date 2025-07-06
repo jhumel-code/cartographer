@@ -101,6 +101,100 @@ Description: fast, scalable, distributed revision control system
 `
 )
 
+// Test constants for CycloneDX package manager files
+const (
+	// CycloneDX file names
+	cycloneDxPackageJSON     = "package.json"
+	cycloneDxPackageLock     = "package-lock.json"
+	cycloneDxYarnLock        = "yarn.lock"
+	cycloneDxPnpmLock        = "pnpm-lock.yaml"
+	cycloneDxNpmShrinkwrap   = "npm-shrinkwrap.json"
+	cycloneDxBowerJSON       = "bower.json"
+	cycloneDxPyprojectToml   = "pyproject.toml"
+	cycloneDxRequirementsTxt = "requirements.txt"
+	cycloneDxSetupPy         = "setup.py"
+	cycloneDxPipfile         = "Pipfile"
+	cycloneDxPipfileLock     = "Pipfile.lock"
+	cycloneDxPoetryLock      = "poetry.lock"
+	cycloneDxPomXML          = "pom.xml"
+	cycloneDxBuildGradle     = "build.gradle"
+	cycloneDxGoMod           = "go.mod"
+	cycloneDxGoSum           = "go.sum"
+	cycloneDxCargoToml       = "Cargo.toml"
+	cycloneDxCargoLock       = "Cargo.lock"
+	cycloneDxGemfile         = "Gemfile"
+	cycloneDxGemfileLock     = "Gemfile.lock"
+	cycloneDxComposerJSON    = "composer.json"
+	cycloneDxComposerLock    = "composer.lock"
+	cycloneDxPodfile         = "Podfile"
+	cycloneDxPodfileLock     = "Podfile.lock"
+)
+
+// CycloneDX package manager file contents
+var (
+	packageJSONContent = `{
+  "name": "test-app",
+  "version": "1.0.0",
+  "dependencies": {
+    "express": "^4.18.0",
+    "lodash": "^4.17.21"
+  }
+}`
+
+	requirementsTxtContent = `Django==4.2.0
+requests>=2.28.0
+pytest==7.4.0`
+
+	pomXMLContent = `<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.example</groupId>
+    <artifactId>test-app</artifactId>
+    <version>1.0.0</version>
+</project>`
+
+	buildGradleContent = `plugins {
+    id 'java'
+}
+
+dependencies {
+    implementation 'org.springframework:spring-core:5.3.21'
+    testImplementation 'junit:junit:4.13.2'
+}`
+
+	goModContent = `module github.com/example/test-app
+
+go 1.21
+
+require (
+    github.com/gin-gonic/gin v1.9.1
+    github.com/go-redis/redis/v8 v8.11.5
+)`
+
+	cargoTomlContent = `[package]
+name = "test-app"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = "1.0"
+tokio = "1.0"`
+
+	gemfileContent = `source 'https://rubygems.org'
+
+gem 'rails', '~> 7.0.0'
+gem 'pg', '~> 1.1'
+gem 'puma', '~> 5.0'`
+
+	composerJSONContent = `{
+    "name": "example/test-app",
+    "require": {
+        "symfony/console": "^6.0",
+        "doctrine/orm": "^2.12"
+    }
+}`
+)
+
 // Helper function to create a tar archive with test files
 func createTestTarArchive(files map[string]TarFileInfo) *bytes.Buffer {
 	var buf bytes.Buffer
@@ -162,6 +256,7 @@ func TestTarLayerScannerSupportedTypes(t *testing.T) {
 	types := scanner.SupportedTypes()
 
 	expectedTypes := []artifact.Type{
+		// Original types
 		artifact.TypeExecutable,
 		artifact.TypeSharedLibrary,
 		artifact.TypeStaticLibrary,
@@ -177,6 +272,75 @@ func TestTarLayerScannerSupportedTypes(t *testing.T) {
 		artifact.TypeCertificate,
 		artifact.TypePrivateKey,
 		artifact.TypePublicKey,
+		// CycloneDX Package Manager Files
+		artifact.TypePackageJSON,
+		artifact.TypePackageLock,
+		artifact.TypeYarnLock,
+		artifact.TypePnpmLock,
+		artifact.TypeNpmShrinkwrap,
+		artifact.TypeBowerJSON,
+		artifact.TypePyprojectToml,
+		artifact.TypeRequirementsTxt,
+		artifact.TypeSetupPy,
+		artifact.TypePipfile,
+		artifact.TypePipfileLock,
+		artifact.TypePoetryLock,
+		artifact.TypePdmLock,
+		artifact.TypeUvLock,
+		artifact.TypePomXML,
+		artifact.TypeBuildGradle,
+		artifact.TypeGoMod,
+		artifact.TypeGoSum,
+		artifact.TypeCargoToml,
+		artifact.TypeCargoLock,
+		artifact.TypeGemfile,
+		artifact.TypeGemfileLock,
+		artifact.TypeComposerJSON,
+		artifact.TypeComposerLock,
+		artifact.TypePodfile,
+		artifact.TypePodfileLock,
+		artifact.TypePackageSwift,
+		artifact.TypePackageResolved,
+		artifact.TypeProjectClj,
+		artifact.TypeDepsEdn,
+		artifact.TypeCabalProject,
+		artifact.TypeCabalFreeze,
+		artifact.TypeMixExs,
+		artifact.TypeMixLock,
+		artifact.TypeConanfile,
+		artifact.TypeConanLock,
+		artifact.TypePubspecYaml,
+		artifact.TypePubspecLock,
+		artifact.TypeProjectAssets,
+		artifact.TypePackagesLock,
+		artifact.TypePackagesConfig,
+		artifact.TypePaketLock,
+		artifact.TypeCsprojFile,
+		artifact.TypeVbprojFile,
+		artifact.TypeFsprojFile,
+		artifact.TypeSlnFile,
+		artifact.TypeNugetPackage,
+		artifact.TypeGopkgLock,
+		artifact.TypeGopkgToml,
+		artifact.TypeGemspec,
+		artifact.TypeJarFile,
+		artifact.TypeWarFile,
+		artifact.TypeEarFile,
+		artifact.TypeWheelFile,
+		artifact.TypeEggFile,
+		artifact.TypeApkFile,
+		artifact.TypeAabFile,
+		artifact.TypeHpiFile,
+		artifact.TypeCMakeFile,
+		artifact.TypeMesonBuild,
+		artifact.TypeBazelFile,
+		artifact.TypeBuildMill,
+		artifact.TypeSbtFile,
+		artifact.TypeGradleWrapper,
+		artifact.TypeHelmValues,
+		artifact.TypeHelmChartYaml,
+		artifact.TypeOsqueryConf,
+		artifact.TypeOpenAPISpec,
 	}
 
 	if len(types) != len(expectedTypes) {
@@ -943,8 +1107,8 @@ func TestTarLayerScannerMetadata(t *testing.T) {
 	// Check metadata
 	expectedMetadata := map[string]string{
 		"file_type": string(artifact.TypeExecutable),
-		"uid":       string(rune(1000)),
-		"gid":       string(rune(1000)),
+		"uid":       "1000",
+		"gid":       "1000",
 		"uname":     "testuser",
 		"gname":     "testgroup",
 	}
@@ -955,5 +1119,353 @@ func TestTarLayerScannerMetadata(t *testing.T) {
 		} else if actualValue != expectedValue {
 			t.Errorf("Metadata[%s] = %v, expected %v", key, actualValue, expectedValue)
 		}
+	}
+}
+
+func TestTarLayerScannerCycloneDXPackages(t *testing.T) {
+	scanner := NewTarLayerScanner()
+	source := artifact.Source{
+		Type:     artifact.SourceTypeFilesystem,
+		Location: "/test/cyclonedx",
+	}
+
+	// Create test tar archive with CycloneDX package manager files
+	files := map[string]TarFileInfo{
+		"package.json": {
+			Content: packageJSONContent,
+			Mode:    0644,
+			Uid:     1000,
+			Gid:     1000,
+			Uname:   "user",
+			Gname:   "user",
+		},
+		"requirements.txt": {
+			Content: requirementsTxtContent,
+			Mode:    0644,
+			Uid:     1000,
+			Gid:     1000,
+			Uname:   "user",
+			Gname:   "user",
+		},
+		"pom.xml": {
+			Content: pomXMLContent,
+			Mode:    0644,
+			Uid:     1000,
+			Gid:     1000,
+			Uname:   "user",
+			Gname:   "user",
+		},
+		"build.gradle": {
+			Content: buildGradleContent,
+			Mode:    0644,
+			Uid:     1000,
+			Gid:     1000,
+			Uname:   "user",
+			Gname:   "user",
+		},
+		"go.mod": {
+			Content: goModContent,
+			Mode:    0644,
+			Uid:     1000,
+			Gid:     1000,
+			Uname:   "user",
+			Gname:   "user",
+		},
+		"Cargo.toml": {
+			Content: cargoTomlContent,
+			Mode:    0644,
+			Uid:     1000,
+			Gid:     1000,
+			Uname:   "user",
+			Gname:   "user",
+		},
+		"Gemfile": {
+			Content: gemfileContent,
+			Mode:    0644,
+			Uid:     1000,
+			Gid:     1000,
+			Uname:   "user",
+			Gname:   "user",
+		},
+		"composer.json": {
+			Content: composerJSONContent,
+			Mode:    0644,
+			Uid:     1000,
+			Gid:     1000,
+			Uname:   "user",
+			Gname:   "user",
+		},
+		"test-app.jar": {
+			Content: "", // JAR content doesn't matter for detection
+			Mode:    0644,
+			Uid:     1000,
+			Gid:     1000,
+			Uname:   "user",
+			Gname:   "user",
+		},
+		"app.war": {
+			Content: "", // WAR content doesn't matter for detection
+			Mode:    0644,
+			Uid:     1000,
+			Gid:     1000,
+			Uname:   "user",
+			Gname:   "user",
+		},
+		"dist/package-1.0.0.whl": {
+			Content: "", // Wheel content doesn't matter for detection
+			Mode:    0644,
+			Uid:     1000,
+			Gid:     1000,
+			Uname:   "user",
+			Gname:   "user",
+		},
+		"CMakeLists.txt": {
+			Content: "cmake_minimum_required(VERSION 3.10)\nproject(TestApp)",
+			Mode:    0644,
+			Uid:     1000,
+			Gid:     1000,
+			Uname:   "user",
+			Gname:   "user",
+		},
+	}
+
+	tarBuffer := createTestTarArchive(files)
+	ctx := context.Background()
+
+	artifacts, err := scanner.ScanLayer(ctx, tarBuffer, source)
+
+	if err != nil {
+		t.Fatalf("ScanLayer() error = %v", err)
+	}
+
+	// Verify we found CycloneDX package artifacts
+	if len(artifacts) == 0 {
+		t.Fatal("ScanLayer() found no CycloneDX package artifacts")
+	}
+
+	// Test specific CycloneDX artifact types
+	typeMap := make(map[artifact.Type]int)
+	for _, art := range artifacts {
+		typeMap[art.Type]++
+	}
+
+	// Check that we detected various CycloneDX package types
+	expectedCycloneDXTypes := map[artifact.Type]int{
+		artifact.TypePackageJSON:     1, // package.json
+		artifact.TypeRequirementsTxt: 1, // requirements.txt
+		artifact.TypePomXML:          1, // pom.xml
+		artifact.TypeBuildGradle:     1, // build.gradle
+		artifact.TypeGoMod:           1, // go.mod
+		artifact.TypeCargoToml:       1, // Cargo.toml
+		artifact.TypeGemfile:         1, // Gemfile
+		artifact.TypeComposerJSON:    1, // composer.json
+		artifact.TypeJarFile:         1, // test-app.jar
+		artifact.TypeWarFile:         1, // app.war
+		artifact.TypeWheelFile:       1, // package-1.0.0.whl
+		artifact.TypeCMakeFile:       1, // CMakeLists.txt
+	}
+
+	for expectedType, expectedCount := range expectedCycloneDXTypes {
+		if actualCount := typeMap[expectedType]; actualCount != expectedCount {
+			t.Errorf("Expected %d artifacts of type %s, got %d", expectedCount, expectedType, actualCount)
+		}
+	}
+
+	// Verify specific artifact properties
+	for _, art := range artifacts {
+		switch art.Type {
+		case artifact.TypePackageJSON:
+			if art.Name != "package.json" {
+				t.Errorf("PackageJSON artifact name = %v, expected package.json", art.Name)
+			}
+		case artifact.TypeRequirementsTxt:
+			if art.Name != "requirements.txt" {
+				t.Errorf("RequirementsTxt artifact name = %v, expected requirements.txt", art.Name)
+			}
+		case artifact.TypePomXML:
+			if art.Name != "pom.xml" {
+				t.Errorf("PomXML artifact name = %v, expected pom.xml", art.Name)
+			}
+		case artifact.TypeJarFile:
+			if art.Name != "test-app.jar" {
+				t.Errorf("JarFile artifact name = %v, expected test-app.jar", art.Name)
+			}
+		}
+	}
+}
+
+func TestTarLayerScannerDetectPackageManagerFile(t *testing.T) {
+	scanner := NewTarLayerScanner()
+
+	tests := []struct {
+		name         string
+		fileName     string
+		filePath     string
+		expectedType string
+	}{
+		// Node.js ecosystem
+		{
+			name:         "package.json",
+			fileName:     "package.json",
+			filePath:     "package.json",
+			expectedType: string(artifact.TypePackageJSON),
+		},
+		{
+			name:         "package-lock.json",
+			fileName:     "package-lock.json",
+			filePath:     "package-lock.json",
+			expectedType: string(artifact.TypePackageLock),
+		},
+		{
+			name:         "yarn.lock",
+			fileName:     "yarn.lock",
+			filePath:     "yarn.lock",
+			expectedType: string(artifact.TypeYarnLock),
+		},
+		// Python ecosystem
+		{
+			name:         "requirements.txt",
+			fileName:     "requirements.txt",
+			filePath:     "requirements.txt",
+			expectedType: string(artifact.TypeRequirementsTxt),
+		},
+		{
+			name:         "pyproject.toml",
+			fileName:     "pyproject.toml",
+			filePath:     "pyproject.toml",
+			expectedType: string(artifact.TypePyprojectToml),
+		},
+		{
+			name:         "setup.py",
+			fileName:     "setup.py",
+			filePath:     "setup.py",
+			expectedType: string(artifact.TypeSetupPy),
+		},
+		// Java ecosystem
+		{
+			name:         "pom.xml",
+			fileName:     "pom.xml",
+			filePath:     "pom.xml",
+			expectedType: string(artifact.TypePomXML),
+		},
+		{
+			name:         "build.gradle",
+			fileName:     "build.gradle",
+			filePath:     "build.gradle",
+			expectedType: string(artifact.TypeBuildGradle),
+		},
+		{
+			name:         "JAR file",
+			fileName:     "test-app.jar",
+			filePath:     "target/test-app.jar",
+			expectedType: string(artifact.TypeJarFile),
+		},
+		// Go ecosystem
+		{
+			name:         "go.mod",
+			fileName:     "go.mod",
+			filePath:     "go.mod",
+			expectedType: string(artifact.TypeGoMod),
+		},
+		{
+			name:         "go.sum",
+			fileName:     "go.sum",
+			filePath:     "go.sum",
+			expectedType: string(artifact.TypeGoSum),
+		},
+		// Rust ecosystem
+		{
+			name:         "Cargo.toml",
+			fileName:     "Cargo.toml",
+			filePath:     "Cargo.toml",
+			expectedType: string(artifact.TypeCargoToml),
+		},
+		{
+			name:         "Cargo.lock",
+			fileName:     "Cargo.lock",
+			filePath:     "Cargo.lock",
+			expectedType: string(artifact.TypeCargoLock),
+		},
+		// Ruby ecosystem
+		{
+			name:         "Gemfile",
+			fileName:     "Gemfile",
+			filePath:     "Gemfile",
+			expectedType: string(artifact.TypeGemfile),
+		},
+		{
+			name:         "Gemfile.lock",
+			fileName:     "Gemfile.lock",
+			filePath:     "Gemfile.lock",
+			expectedType: string(artifact.TypeGemfileLock),
+		},
+		// PHP ecosystem
+		{
+			name:         "composer.json",
+			fileName:     "composer.json",
+			filePath:     "composer.json",
+			expectedType: string(artifact.TypeComposerJSON),
+		},
+		{
+			name:         "composer.lock",
+			fileName:     "composer.lock",
+			filePath:     "composer.lock",
+			expectedType: string(artifact.TypeComposerLock),
+		},
+		// Build systems
+		{
+			name:         "CMakeLists.txt",
+			fileName:     "CMakeLists.txt",
+			filePath:     "CMakeLists.txt",
+			expectedType: string(artifact.TypeCMakeFile),
+		},
+		{
+			name:         "meson.build",
+			fileName:     "meson.build",
+			filePath:     "meson.build",
+			expectedType: string(artifact.TypeMesonBuild),
+		},
+		// Docker and container files
+		{
+			name:         "Dockerfile",
+			fileName:     "Dockerfile",
+			filePath:     "Dockerfile",
+			expectedType: "",
+		},
+		// Helm
+		{
+			name:         "Chart.yaml",
+			fileName:     "Chart.yaml",
+			filePath:     "Chart.yaml",
+			expectedType: string(artifact.TypeHelmChartYaml),
+		},
+		{
+			name:         "values.yaml in helm chart",
+			fileName:     "values.yaml",
+			filePath:     "helm/charts/myapp/values.yaml",
+			expectedType: string(artifact.TypeHelmValues),
+		},
+		{
+			name:         "values.yaml not in helm chart",
+			fileName:     "values.yaml",
+			filePath:     "config/values.yaml",
+			expectedType: "",
+		},
+		// Unknown file
+		{
+			name:         "unknown file",
+			fileName:     "unknown.xyz",
+			filePath:     "unknown.xyz",
+			expectedType: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := scanner.detectPackageManagerFile(tt.fileName, tt.filePath)
+			if result != tt.expectedType {
+				t.Errorf("detectPackageManagerFile() = %v, expected %v", result, tt.expectedType)
+			}
+		})
 	}
 }

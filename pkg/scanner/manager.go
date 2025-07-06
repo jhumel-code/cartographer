@@ -3,40 +3,36 @@ package scanner
 import (
 	"archive/tar"
 	"context"
-	"crypto/sha256"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/ianjhumelbautista/cartographer/pkg/artifact"
 	"github.com/ianjhumelbautista/cartographer/pkg/docker"
 )
 
-// Manager coordinates multiple scanners to analyze sources
+// Manager coordinates multiple scanners and plugins to analyze sources
 type Manager struct {
-	scanners     []artifact.Scanner
-	dockerClient *docker.Client
+	scanners       []artifact.Scanner
+	dockerClient   *docker.Client
+	pluginRegistry *PluginRegistry
 }
 
 // NewManager creates a new scanner manager
-func NewManager(dockerClient *docker.Client) *Manager {
+func NewManager(dockerClient *docker.Client, scanners ...artifact.Scanner) *Manager {
 	manager := &Manager{
-		scanners:     make([]artifact.Scanner, 0),
-		dockerClient: dockerClient,
+		scanners:       make([]artifact.Scanner, 0),
+		dockerClient:   dockerClient,
+		pluginRegistry: NewPluginRegistry(),
 	}
 
-	// Register universal scanners for comprehensive artifact detection
-	manager.RegisterScanner(NewTarLayerScanner())
-	manager.RegisterScanner(NewBinaryAnalyzer())
-	manager.RegisterScanner(NewDependencyAnalyzer())
-	manager.RegisterScanner(NewSecurityAnalyzer())
-	manager.RegisterScanner(NewInfrastructureAnalyzer())
-	manager.RegisterScanner(NewLicenseAnalyzer())
-	manager.RegisterScanner(NewCIAnalyzer())
+	// Register listed scanners
+	for _, scanner := range scanners {
+		manager.RegisterScanner(scanner)
+	}
 
 	return manager
 }
@@ -46,185 +42,134 @@ func (m *Manager) RegisterScanner(scanner artifact.Scanner) {
 	m.scanners = append(m.scanners, scanner)
 }
 
+// RegisterPlugin adds a plugin to the manager
+func (m *Manager) RegisterPlugin(plugin Plugin) {
+	m.pluginRegistry.Register(plugin)
+}
+
+// GetPluginRegistry returns the plugin registry for advanced operations
+func (m *Manager) GetPluginRegistry() *PluginRegistry {
+	return m.pluginRegistry
+}
+
 // ScanDockerImage scans a Docker image for artifacts
 func (m *Manager) ScanDockerImage(ctx context.Context, imageRef string) (*artifact.Collection, error) {
-	startTime := time.Now()
-
-	imageInfo, image, err := m.dockerClient.PullImage(ctx, imageRef)
-	if err != nil {
-		return nil, fmt.Errorf("pulling image: %w", err)
-	}
-
-	source := artifact.Source{
-		Type:     artifact.SourceTypeDockerImage,
-		Location: imageRef,
-		Metadata: map[string]string{
-			"registry":     imageInfo.Registry,
-			"repository":   imageInfo.Repository,
-			"tag":          imageInfo.Tag,
-			"digest":       imageInfo.Digest,
-			"architecture": imageInfo.Architecture,
-			"os":           imageInfo.OS,
-		},
-	}
-
-	layers, err := image.Layers()
-	if err != nil {
-		return nil, fmt.Errorf("getting image layers: %w", err)
-	}
-
-	var allArtifacts []artifact.Artifact
-	for i, layer := range layers {
-		layerDigest, err := layer.Digest()
-		if err != nil {
-			continue
-		}
-
-		layerSource := source
-		layerSource.Layer = layerDigest.String()
-		layerSource.Metadata["layer_index"] = fmt.Sprintf("%d", i)
-
-		layerArtifacts, err := m.scanLayer(ctx, layer, layerSource)
-		if err != nil {
-			continue
-		}
-
-		allArtifacts = append(allArtifacts, layerArtifacts...)
-	}
-
-	// Assign unique IDs to artifacts
-	allArtifacts = assignArtifactIDs(allArtifacts)
-
-	// Analyze relationships between artifacts
-	relationshipAnalyzer := NewRelationshipAnalyzer()
-	allArtifacts = relationshipAnalyzer.AnalyzeRelationships(allArtifacts)
-
-	scanDuration := time.Since(startTime)
-
-	return &artifact.Collection{
-		ID:        generateCollectionID(imageRef),
-		Name:      imageRef,
-		Source:    source,
-		ScanTime:  time.Now(),
-		Artifacts: allArtifacts,
-		Summary:   generateSummary(allArtifacts, scanDuration),
-		Metadata: map[string]string{
-			"image_size": fmt.Sprintf("%d", imageInfo.Size),
-			"layers":     fmt.Sprintf("%d", len(layers)),
-		},
-	}, nil
+	scanner := NewDockerImageScanner(m.dockerClient, m.scanners, m.pluginRegistry)
+	return scanner.Scan(ctx, imageRef)
 }
 
 // ScanFilesystem scans a filesystem path for artifacts
 func (m *Manager) ScanFilesystem(ctx context.Context, path string) (*artifact.Collection, error) {
-	startTime := time.Now()
-
-	source := artifact.Source{
-		Type:     artifact.SourceTypeFilesystem,
-		Location: path,
-		Metadata: map[string]string{
-			"scan_type": "filesystem",
-		},
-	}
-
-	var allArtifacts []artifact.Artifact
-	for _, scanner := range m.scanners {
-		artifacts, err := scanner.Scan(ctx, source)
-		if err != nil {
-			continue
-		}
-		allArtifacts = append(allArtifacts, artifacts...)
-	}
-
-	// Assign unique IDs to artifacts
-	allArtifacts = assignArtifactIDs(allArtifacts)
-
-	// Analyze relationships between artifacts
-	relationshipAnalyzer := NewRelationshipAnalyzer()
-	allArtifacts = relationshipAnalyzer.AnalyzeRelationships(allArtifacts)
-
-	scanDuration := time.Since(startTime)
-
-	return &artifact.Collection{
-		ID:        generateCollectionID(path),
-		Name:      filepath.Base(path),
-		Source:    source,
-		ScanTime:  time.Now(),
-		Artifacts: allArtifacts,
-		Summary:   generateSummary(allArtifacts, scanDuration),
-		Metadata: map[string]string{
-			"path": path,
-		},
-	}, nil
+	scanner := NewFilesystemScanner(m.scanners, m.pluginRegistry)
+	return scanner.Scan(ctx, path)
 }
 
 // scanLayer scans a single Docker layer
 func (m *Manager) scanLayer(ctx context.Context, layer v1.Layer, source artifact.Source) ([]artifact.Artifact, error) {
-	content, err := layer.Uncompressed()
-	if err != nil {
-		return nil, fmt.Errorf("getting layer content: %w", err)
-	}
-	defer content.Close()
-
 	var allArtifacts []artifact.Artifact
 
 	// Run layer scanners on tar stream
+	layerArtifacts, err := m.runLayerScanners(ctx, layer, source)
+	if err != nil {
+		return nil, fmt.Errorf("running layer scanners: %w", err)
+	}
+	allArtifacts = append(allArtifacts, layerArtifacts...)
+
+	// Extract layer and run filesystem scanners
+	filesystemArtifacts, err := m.runFilesystemScannersOnLayer(ctx, layer, source)
+	if err != nil {
+		// Continue with layer artifacts even if filesystem scanning fails
+		return allArtifacts, nil
+	}
+	allArtifacts = append(allArtifacts, filesystemArtifacts...)
+
+	return allArtifacts, nil
+}
+
+func (m *Manager) runLayerScanners(ctx context.Context, layer v1.Layer, source artifact.Source) ([]artifact.Artifact, error) {
+	var artifacts []artifact.Artifact
+
 	for _, scanner := range m.scanners {
 		if layerScanner, ok := scanner.(LayerScanner); ok {
-			freshContent, err := layer.Uncompressed()
+			scannerArtifacts, err := m.runSingleLayerScanner(ctx, layer, source, layerScanner)
 			if err != nil {
-				continue
+				continue // Skip failed scanners
 			}
-
-			artifacts, err := layerScanner.ScanLayer(ctx, freshContent, source)
-			freshContent.Close()
-			if err != nil {
-				continue
-			}
-			allArtifacts = append(allArtifacts, artifacts...)
+			artifacts = append(artifacts, scannerArtifacts...)
 		}
 	}
 
-	// Extract layer and run filesystem scanners
-	tempDir, err := os.MkdirTemp("", "cartographer-layer-*")
+	return artifacts, nil
+}
+
+func (m *Manager) runSingleLayerScanner(ctx context.Context, layer v1.Layer, source artifact.Source, scanner LayerScanner) ([]artifact.Artifact, error) {
+	content, err := layer.Uncompressed()
 	if err != nil {
-		return allArtifacts, nil
+		return nil, err
+	}
+	defer content.Close()
+
+	return scanner.ScanLayer(ctx, content, source)
+}
+
+func (m *Manager) runFilesystemScannersOnLayer(ctx context.Context, layer v1.Layer, source artifact.Source) ([]artifact.Artifact, error) {
+	tempDir, err := m.extractLayerToTempDir(layer)
+	if err != nil {
+		return nil, err
 	}
 	defer os.RemoveAll(tempDir)
-
-	freshContent, err := layer.Uncompressed()
-	if err != nil {
-		return allArtifacts, nil
-	}
-	defer freshContent.Close()
-
-	err = m.extractTarToDir(freshContent, tempDir)
-	if err != nil {
-		return allArtifacts, nil
-	}
 
 	tempSource := source
 	tempSource.Type = artifact.SourceTypeFilesystem
 	tempSource.Location = tempDir
 
-	for _, scanner := range m.scanners {
-		if _, ok := scanner.(LayerScanner); ok {
-			continue
-		}
+	return m.runFilesystemScanners(ctx, tempSource, source)
+}
 
-		artifacts, err := scanner.Scan(ctx, tempSource)
-		if err != nil {
-			continue
-		}
-
-		for i := range artifacts {
-			artifacts[i].Source = source
-		}
-
-		allArtifacts = append(allArtifacts, artifacts...)
+func (m *Manager) extractLayerToTempDir(layer v1.Layer) (string, error) {
+	tempDir, err := os.MkdirTemp("", "cartographer-layer-*")
+	if err != nil {
+		return "", err
 	}
 
-	return allArtifacts, nil
+	content, err := layer.Uncompressed()
+	if err != nil {
+		os.RemoveAll(tempDir)
+		return "", err
+	}
+	defer content.Close()
+
+	err = m.extractTarToDir(content, tempDir)
+	if err != nil {
+		os.RemoveAll(tempDir)
+		return "", err
+	}
+
+	return tempDir, nil
+}
+
+func (m *Manager) runFilesystemScanners(ctx context.Context, tempSource, originalSource artifact.Source) ([]artifact.Artifact, error) {
+	var artifacts []artifact.Artifact
+
+	for _, scanner := range m.scanners {
+		if _, ok := scanner.(LayerScanner); ok {
+			continue // Skip layer scanners
+		}
+
+		scannerArtifacts, err := scanner.Scan(ctx, tempSource)
+		if err != nil {
+			continue // Skip failed scanners
+		}
+
+		// Update source back to original
+		for i := range scannerArtifacts {
+			scannerArtifacts[i].Source = originalSource
+		}
+
+		artifacts = append(artifacts, scannerArtifacts...)
+	}
+
+	return artifacts, nil
 }
 
 func (m *Manager) extractTarToDir(tarReader io.Reader, destDir string) error {
@@ -239,87 +184,51 @@ func (m *Manager) extractTarToDir(tarReader io.Reader, destDir string) error {
 			return err
 		}
 
-		destPath := filepath.Join(destDir, hdr.Name)
-		if !strings.HasPrefix(destPath, destDir) {
-			continue
-		}
-
-		switch hdr.Typeflag {
-		case tar.TypeDir:
-			err := os.MkdirAll(destPath, os.FileMode(hdr.Mode))
-			if err != nil {
-				continue
-			}
-
-		case tar.TypeReg:
-			err := os.MkdirAll(filepath.Dir(destPath), 0755)
-			if err != nil {
-				continue
-			}
-
-			file, err := os.OpenFile(destPath, os.O_CREATE|os.O_WRONLY, os.FileMode(hdr.Mode))
-			if err != nil {
-				continue
-			}
-
-			_, err = io.Copy(file, tr)
-			file.Close()
-			if err != nil {
-				continue
-			}
-
-		case tar.TypeSymlink:
-			err := os.Symlink(hdr.Linkname, destPath)
-			if err != nil {
-				continue
-			}
+		if err := m.extractTarEntry(tr, hdr, destDir); err != nil {
+			continue // Skip problematic entries
 		}
 	}
 
 	return nil
 }
 
-type LayerScanner interface {
-	ScanLayer(ctx context.Context, content io.Reader, source artifact.Source) ([]artifact.Artifact, error)
-}
-
-func generateCollectionID(source string) string {
-	// Generate a proper unique ID based on source and timestamp
-	data := fmt.Sprintf("%s:%d", source, time.Now().UnixNano())
-	hash := sha256.Sum256([]byte(data))
-	return fmt.Sprintf("%x", hash)[:16] // Use first 16 chars of hash
-}
-
-func generateSummary(artifacts []artifact.Artifact, scanDuration time.Duration) artifact.Summary {
-	summary := artifact.Summary{
-		TotalArtifacts:  len(artifacts),
-		ArtifactsByType: make(map[artifact.Type]int),
-		LicenseCount:    make(map[string]int),
-		ScanDuration:    scanDuration,
+func (m *Manager) extractTarEntry(tr *tar.Reader, hdr *tar.Header, destDir string) error {
+	destPath := filepath.Join(destDir, hdr.Name)
+	if !strings.HasPrefix(destPath, destDir) {
+		return fmt.Errorf("path traversal detected: %s", hdr.Name)
 	}
 
-	for _, art := range artifacts {
-		summary.ArtifactsByType[art.Type]++
-		for _, license := range art.Licenses {
-			summary.LicenseCount[license.ID]++
-		}
+	switch hdr.Typeflag {
+	case tar.TypeDir:
+		return m.extractDirectory(destPath, hdr)
+	case tar.TypeReg:
+		return m.extractRegularFile(tr, destPath, hdr)
+	case tar.TypeSymlink:
+		return m.extractSymlink(destPath, hdr)
+	default:
+		return fmt.Errorf("unsupported tar entry type: %c", hdr.Typeflag)
 	}
-
-	return summary
 }
 
-// generateArtifactID generates a unique ID for an artifact
-func generateArtifactID(art *artifact.Artifact) string {
-	// Create ID based on type, name, path, and source
-	data := fmt.Sprintf("%s:%s:%s:%s", art.Type, art.Name, art.Path, art.Source.Location)
-	hash := sha256.Sum256([]byte(data))
-	return fmt.Sprintf("%x", hash)[:16] // Use first 16 chars of hash
+func (m *Manager) extractDirectory(destPath string, hdr *tar.Header) error {
+	return os.MkdirAll(destPath, os.FileMode(hdr.Mode))
 }
 
-// assignArtifactIDs assigns unique IDs to all artifacts
-func assignArtifactIDs(artifacts []artifact.Artifact) []artifact.Artifact {
-	for i := range artifacts {
-		artifacts[i].ID = generateArtifactID(&artifacts[i])
+func (m *Manager) extractRegularFile(tr *tar.Reader, destPath string, hdr *tar.Header) error {
+	if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
+		return err
 	}
-	return artifacts
+
+	file, err := os.OpenFile(destPath, os.O_CREATE|os.O_WRONLY, os.FileMode(hdr.Mode))
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	_, err = io.Copy(file, tr)
+	return err
+}
+
+func (m *Manager) extractSymlink(destPath string, hdr *tar.Header) error {
+	return os.Symlink(hdr.Linkname, destPath)
 }

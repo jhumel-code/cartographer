@@ -65,192 +65,106 @@ func (r *RelationshipAnalyzer) buildRelationshipsForArtifact(
 		art.Relationships = []artifact.Relationship{}
 	}
 
-	switch art.Type {
-	case artifact.TypeDockerfile:
-		r.analyzeDockerfileRelationships(art, artifactsByName, artifactsByPath)
-	case artifact.TypeDockerCompose:
-		r.analyzeDockerComposeRelationships(art, artifactsByName, artifactsByPath)
-	case artifact.TypeKubernetesManifest:
-		r.analyzeKubernetesRelationships(art, artifactsByName, artifactsByPath)
-	case artifact.TypeTerraformConfig:
-		r.analyzeTerraformRelationships(art, artifactsByName, artifactsByPath)
-	case artifact.TypeJenkinsfile, artifact.TypeGitHubActions, artifact.TypeGitLabCI:
-		r.analyzeCIRelationships(art, artifactsByName, artifactsByPath)
-	case artifact.TypeExecutable:
-		r.analyzeExecutableRelationships(art, artifactsByName, artifactsByType)
-	case artifact.TypeSharedLibrary:
-		r.analyzeLibraryRelationships(art, artifactsByName, artifactsByType)
-	}
+	// Analyze type-specific relationships
+	r.analyzeTypeSpecificRelationships(art, artifactsByName, artifactsByPath, artifactsByType)
 
-	// Analyze dependency relationships
+	// Analyze common relationships
 	r.analyzeDependencyRelationships(art, artifactsByName)
-
-	// Analyze containment relationships
 	r.analyzeContainmentRelationships(art, artifactsByPath)
-
-	// Analyze configuration relationships
 	r.analyzeConfigurationRelationships(art, artifactsByName, artifactsByPath)
 }
 
-func (r *RelationshipAnalyzer) analyzeDockerfileRelationships(
+func (r *RelationshipAnalyzer) analyzeTypeSpecificRelationships(
 	art *artifact.Artifact,
 	artifactsByName map[string]*artifact.Artifact,
 	artifactsByPath map[string]*artifact.Artifact,
+	artifactsByType map[artifact.Type][]*artifact.Artifact,
 ) {
-	// Dockerfile typically builds container images
-	dockerDir := filepath.Dir(art.Path)
-
-	// Look for related Docker Compose files
-	for path, target := range artifactsByPath {
-		if target.Type == artifact.TypeDockerCompose &&
-			strings.HasPrefix(path, dockerDir) {
-			art.Relationships = append(art.Relationships, artifact.Relationship{
-				Type:       artifact.RelationshipBuilds,
-				TargetID:   target.ID,
-				TargetName: target.Name,
-				Metadata: map[string]string{
-					"relationship_type": "container-orchestration",
-				},
-			})
-		}
+	switch art.Type {
+	case artifact.TypeDockerfile:
+		r.analyzeContainerRelationships(art, artifactsByPath, artifact.RelationshipBuilds, "container-orchestration")
+	case artifact.TypeDockerCompose:
+		r.analyzeContainerRelationships(art, artifactsByPath, artifact.RelationshipDependsOn, "build-dependency")
+	case artifact.TypeKubernetesManifest:
+		r.analyzeKubernetesRelationships(art, artifactsByPath)
+	case artifact.TypeTerraformConfig:
+		r.analyzeTerraformRelationships(art, artifactsByPath)
+	case artifact.TypeJenkinsfile, artifact.TypeGitHubActions, artifact.TypeGitLabCI:
+		r.analyzeCIRelationships(art, artifactsByPath)
+	case artifact.TypeExecutable:
+		r.analyzeExecutableRelationships(art, artifactsByType)
+	case artifact.TypeSharedLibrary:
+		r.analyzeLibraryRelationships(art, artifactsByType)
 	}
 }
 
-func (r *RelationshipAnalyzer) analyzeDockerComposeRelationships(
+func (r *RelationshipAnalyzer) analyzeContainerRelationships(
 	art *artifact.Artifact,
-	artifactsByName map[string]*artifact.Artifact,
 	artifactsByPath map[string]*artifact.Artifact,
+	relType artifact.RelationshipType,
+	relMetadata string,
 ) {
-	composeDir := filepath.Dir(art.Path)
-
-	// Look for Dockerfiles in the same directory
-	for path, target := range artifactsByPath {
-		if target.Type == artifact.TypeDockerfile &&
-			strings.HasPrefix(path, composeDir) {
-			art.Relationships = append(art.Relationships, artifact.Relationship{
-				Type:       artifact.RelationshipDependsOn,
-				TargetID:   target.ID,
-				TargetName: target.Name,
-				Metadata: map[string]string{
-					"relationship_type": "build-dependency",
-				},
-			})
-		}
+	dir := filepath.Dir(art.Path)
+	targetType := artifact.TypeDockerfile
+	if art.Type == artifact.TypeDockerfile {
+		targetType = artifact.TypeDockerCompose
 	}
+
+	r.addDirectoryBasedRelationships(art, artifactsByPath, dir, []artifact.Type{targetType}, relType, relMetadata)
 }
 
 func (r *RelationshipAnalyzer) analyzeKubernetesRelationships(
 	art *artifact.Artifact,
-	artifactsByName map[string]*artifact.Artifact,
 	artifactsByPath map[string]*artifact.Artifact,
 ) {
-	// Kubernetes manifests often depend on container images
-	// This would require parsing the YAML content to find image references
-	// For now, establish directory-based relationships
-	k8sDir := filepath.Dir(art.Path)
-
-	for path, target := range artifactsByPath {
-		if (target.Type == artifact.TypeDockerfile || target.Type == artifact.TypeDockerCompose) &&
-			strings.HasPrefix(path, k8sDir) {
-			art.Relationships = append(art.Relationships, artifact.Relationship{
-				Type:       artifact.RelationshipDependsOn,
-				TargetID:   target.ID,
-				TargetName: target.Name,
-				Metadata: map[string]string{
-					"relationship_type": "container-dependency",
-				},
-			})
-		}
-	}
+	dir := filepath.Dir(art.Path)
+	targetTypes := []artifact.Type{artifact.TypeDockerfile, artifact.TypeDockerCompose}
+	r.addDirectoryBasedRelationships(art, artifactsByPath, dir, targetTypes, artifact.RelationshipDependsOn, "container-dependency")
 }
 
 func (r *RelationshipAnalyzer) analyzeTerraformRelationships(
 	art *artifact.Artifact,
-	artifactsByName map[string]*artifact.Artifact,
 	artifactsByPath map[string]*artifact.Artifact,
 ) {
 	tfDir := filepath.Dir(art.Path)
 
-	// Terraform files in the same directory often work together
 	for path, target := range artifactsByPath {
 		if target.Type == artifact.TypeTerraformConfig &&
 			target.Path != art.Path &&
 			strings.HasPrefix(path, tfDir) {
-			art.Relationships = append(art.Relationships, artifact.Relationship{
-				Type:       artifact.RelationshipRequires,
-				TargetID:   target.ID,
-				TargetName: target.Name,
-				Metadata: map[string]string{
-					"relationship_type": "terraform-module",
-				},
-			})
+			r.addRelationship(art, target, artifact.RelationshipRequires, "terraform-module")
 		}
 	}
 }
 
 func (r *RelationshipAnalyzer) analyzeCIRelationships(
 	art *artifact.Artifact,
-	artifactsByName map[string]*artifact.Artifact,
 	artifactsByPath map[string]*artifact.Artifact,
 ) {
-	ciDir := filepath.Dir(art.Path)
-
-	// CI files often build and deploy other artifacts
-	for path, target := range artifactsByPath {
-		if (target.Type == artifact.TypeDockerfile ||
-			target.Type == artifact.TypeMakefile ||
-			target.Type == artifact.TypeBuildScript) &&
-			strings.HasPrefix(path, ciDir) {
-			art.Relationships = append(art.Relationships, artifact.Relationship{
-				Type:       artifact.RelationshipBuilds,
-				TargetID:   target.ID,
-				TargetName: target.Name,
-				Metadata: map[string]string{
-					"relationship_type": "ci-build",
-				},
-			})
-		}
-	}
+	dir := filepath.Dir(art.Path)
+	targetTypes := []artifact.Type{artifact.TypeDockerfile, artifact.TypeMakefile, artifact.TypeBuildScript}
+	r.addDirectoryBasedRelationships(art, artifactsByPath, dir, targetTypes, artifact.RelationshipBuilds, "ci-build")
 }
 
 func (r *RelationshipAnalyzer) analyzeExecutableRelationships(
 	art *artifact.Artifact,
-	artifactsByName map[string]*artifact.Artifact,
 	artifactsByType map[artifact.Type][]*artifact.Artifact,
 ) {
-	// Executables often link to shared libraries
 	for _, lib := range artifactsByType[artifact.TypeSharedLibrary] {
-		// Simple heuristic: if library name appears in executable path or is common
 		libBaseName := strings.TrimSuffix(lib.Name, filepath.Ext(lib.Name))
 		if strings.Contains(art.Path, libBaseName) || r.isCommonLibrary(lib.Name) {
-			art.Relationships = append(art.Relationships, artifact.Relationship{
-				Type:       artifact.RelationshipLinks,
-				TargetID:   lib.ID,
-				TargetName: lib.Name,
-				Metadata: map[string]string{
-					"relationship_type": "dynamic-linking",
-				},
-			})
+			r.addRelationship(art, lib, artifact.RelationshipLinks, "dynamic-linking")
 		}
 	}
 }
 
 func (r *RelationshipAnalyzer) analyzeLibraryRelationships(
 	art *artifact.Artifact,
-	artifactsByName map[string]*artifact.Artifact,
 	artifactsByType map[artifact.Type][]*artifact.Artifact,
 ) {
-	// Libraries can depend on other libraries
 	for _, lib := range artifactsByType[artifact.TypeSharedLibrary] {
 		if lib.Path != art.Path && r.isRelatedLibrary(art.Name, lib.Name) {
-			art.Relationships = append(art.Relationships, artifact.Relationship{
-				Type:       artifact.RelationshipDependsOn,
-				TargetID:   lib.ID,
-				TargetName: lib.Name,
-				Metadata: map[string]string{
-					"relationship_type": "library-dependency",
-				},
-			})
+			r.addRelationship(art, lib, artifact.RelationshipDependsOn, "library-dependency")
 		}
 	}
 }
@@ -259,17 +173,9 @@ func (r *RelationshipAnalyzer) analyzeDependencyRelationships(
 	art *artifact.Artifact,
 	artifactsByName map[string]*artifact.Artifact,
 ) {
-	// Use existing Dependencies field to create formal relationships
 	for _, depName := range art.Dependencies {
 		if target, exists := artifactsByName[depName]; exists {
-			art.Relationships = append(art.Relationships, artifact.Relationship{
-				Type:       artifact.RelationshipDependsOn,
-				TargetID:   target.ID,
-				TargetName: target.Name,
-				Metadata: map[string]string{
-					"relationship_type": "package-dependency",
-				},
-			})
+			r.addRelationship(art, target, artifact.RelationshipDependsOn, "package-dependency")
 		}
 	}
 }
@@ -280,17 +186,9 @@ func (r *RelationshipAnalyzer) analyzeContainmentRelationships(
 ) {
 	artDir := filepath.Dir(art.Path)
 
-	// Find artifacts contained within this artifact's directory
 	for path, target := range artifactsByPath {
 		if target.Path != art.Path && strings.HasPrefix(path, artDir+"/") {
-			art.Relationships = append(art.Relationships, artifact.Relationship{
-				Type:       artifact.RelationshipContains,
-				TargetID:   target.ID,
-				TargetName: target.Name,
-				Metadata: map[string]string{
-					"relationship_type": "directory-containment",
-				},
-			})
+			r.addRelationship(art, target, artifact.RelationshipContains, "directory-containment")
 		}
 	}
 }
@@ -304,23 +202,50 @@ func (r *RelationshipAnalyzer) analyzeConfigurationRelationships(
 		return
 	}
 
-	configDir := filepath.Dir(art.Path)
+	dir := filepath.Dir(art.Path)
+	targetTypes := []artifact.Type{artifact.TypeExecutable, artifact.TypeSystemdService}
+	r.addDirectoryBasedRelationships(art, artifactsByPath, dir, targetTypes, artifact.RelationshipConfigures, "service-configuration")
+}
 
-	// Configuration files often configure executables or services
+// Helper methods
+func (r *RelationshipAnalyzer) addDirectoryBasedRelationships(
+	art *artifact.Artifact,
+	artifactsByPath map[string]*artifact.Artifact,
+	dir string,
+	targetTypes []artifact.Type,
+	relType artifact.RelationshipType,
+	relMetadata string,
+) {
 	for path, target := range artifactsByPath {
-		if (target.Type == artifact.TypeExecutable ||
-			target.Type == artifact.TypeSystemdService) &&
-			strings.HasPrefix(path, configDir) {
-			art.Relationships = append(art.Relationships, artifact.Relationship{
-				Type:       artifact.RelationshipConfigures,
-				TargetID:   target.ID,
-				TargetName: target.Name,
-				Metadata: map[string]string{
-					"relationship_type": "service-configuration",
-				},
-			})
+		if r.matchesTargetType(target.Type, targetTypes) && strings.HasPrefix(path, dir) {
+			r.addRelationship(art, target, relType, relMetadata)
 		}
 	}
+}
+
+func (r *RelationshipAnalyzer) matchesTargetType(artType artifact.Type, targetTypes []artifact.Type) bool {
+	for _, targetType := range targetTypes {
+		if artType == targetType {
+			return true
+		}
+	}
+	return false
+}
+
+func (r *RelationshipAnalyzer) addRelationship(
+	art *artifact.Artifact,
+	target *artifact.Artifact,
+	relType artifact.RelationshipType,
+	relMetadata string,
+) {
+	art.Relationships = append(art.Relationships, artifact.Relationship{
+		Type:       relType,
+		TargetID:   target.ID,
+		TargetName: target.Name,
+		Metadata: map[string]string{
+			"relationship_type": relMetadata,
+		},
+	})
 }
 
 func (r *RelationshipAnalyzer) isCommonLibrary(libName string) bool {
@@ -338,7 +263,6 @@ func (r *RelationshipAnalyzer) isCommonLibrary(libName string) bool {
 }
 
 func (r *RelationshipAnalyzer) isRelatedLibrary(lib1, lib2 string) bool {
-	// Simple heuristic: libraries with similar names might be related
 	base1 := strings.TrimSuffix(lib1, filepath.Ext(lib1))
 	base2 := strings.TrimSuffix(lib2, filepath.Ext(lib2))
 

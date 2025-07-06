@@ -31,8 +31,8 @@ func main() {
 	// Initialize Docker client
 	dockerClient := docker.NewClient(docker.ClientOptions{})
 
-	// Initialize scanner manager with universal scanners
-	scannerManager := scanner.NewManager(dockerClient)
+	// Use modular scanner manager for comprehensive artifact detection
+	scannerManager := scanner.NewModularDefaultManager(dockerClient)
 
 	var err error
 	var collection interface{}
