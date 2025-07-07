@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ianjhumelbautista/cartographer/pkg/artifact"
+	"github.com/jhumel-code/artiscanctl/pkg/artifact"
 )
 
 // RelationshipAnalyzer builds relationships between artifacts

@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ianjhumelbautista/cartographer/pkg/artifact"
+	"github.com/jhumel-code/artiscanctl/pkg/artifact"
 )
 
 // TarLayerScanner scans Docker layer tar streams

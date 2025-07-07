@@ -3,7 +3,7 @@ package scanner
 import (
 	"context"
 
-	"github.com/ianjhumelbautista/cartographer/pkg/artifact"
+	"github.com/jhumel-code/artiscanctl/pkg/artifact"
 )
 
 // ArtifactProcessor handles post-scan processing of artifacts

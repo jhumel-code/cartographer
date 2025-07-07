@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/ianjhumelbautista/cartographer/pkg/artifact"
+	"github.com/jhumel-code/artiscanctl/pkg/artifact"
 )
 
 const (

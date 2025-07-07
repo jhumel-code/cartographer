@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ianjhumelbautista/cartographer/pkg/artifact"
+	"github.com/jhumel-code/artiscanctl/pkg/artifact"
 )
 
 // Test constants for layer scanner tests

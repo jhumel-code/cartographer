@@ -3,7 +3,7 @@ package scanner
 import (
 	"context"
 
-	"github.com/ianjhumelbautista/cartographer/pkg/artifact"
+	"github.com/jhumel-code/artiscanctl/pkg/artifact"
 )
 
 // Plugin defines the interface for scanner plugins that enhance artifacts

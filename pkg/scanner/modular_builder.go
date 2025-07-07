@@ -1,12 +1,12 @@
 package scanner
 
 import (
-	"github.com/ianjhumelbautista/cartographer/pkg/docker"
-	"github.com/ianjhumelbautista/cartographer/pkg/scanner/core"
-	"github.com/ianjhumelbautista/cartographer/pkg/scanner/package_managers"
-	"github.com/ianjhumelbautista/cartographer/pkg/scanner/plugins/license"
-	"github.com/ianjhumelbautista/cartographer/pkg/scanner/plugins/publishers"
-	"github.com/ianjhumelbautista/cartographer/pkg/scanner/plugins/security"
+	"github.com/jhumel-code/artiscanctl/pkg/docker"
+	"github.com/jhumel-code/artiscanctl/pkg/scanner/core"
+	"github.com/jhumel-code/artiscanctl/pkg/scanner/package_managers"
+	"github.com/jhumel-code/artiscanctl/pkg/scanner/plugins/license"
+	"github.com/jhumel-code/artiscanctl/pkg/scanner/plugins/publishers"
+	"github.com/jhumel-code/artiscanctl/pkg/scanner/plugins/security"
 )
 
 // NewModularDefaultManager creates a modular manager with all default scanners and plugins

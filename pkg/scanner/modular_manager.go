@@ -7,16 +7,16 @@ import (
 	"time"
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
-	"github.com/ianjhumelbautista/cartographer/pkg/artifact"
-	"github.com/ianjhumelbautista/cartographer/pkg/docker"
-	"github.com/ianjhumelbautista/cartographer/pkg/scanner/core"
-	"github.com/ianjhumelbautista/cartographer/pkg/scanner/infrastructure"
-	"github.com/ianjhumelbautista/cartographer/pkg/scanner/package_managers"
-	"github.com/ianjhumelbautista/cartographer/pkg/scanner/security"
-	"github.com/ianjhumelbautista/cartographer/pkg/scanner/system"
+	"github.com/jhumel-code/artiscanctl/pkg/artifact"
+	"github.com/jhumel-code/artiscanctl/pkg/docker"
+	"github.com/jhumel-code/artiscanctl/pkg/scanner/core"
+	"github.com/jhumel-code/artiscanctl/pkg/scanner/infrastructure"
+	"github.com/jhumel-code/artiscanctl/pkg/scanner/package_managers"
+	"github.com/jhumel-code/artiscanctl/pkg/scanner/security"
+	"github.com/jhumel-code/artiscanctl/pkg/scanner/system"
 )
 
-const ModularScannerVersion = "2.0.0-modular"
+const ModularScannerVersion = "2.0.0-artiscanctl"
 
 // ModularManager coordinates multiple modular scanners and plugins
 type ModularManager struct {

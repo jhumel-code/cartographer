@@ -1,6 +1,6 @@
-# Cartographer
+# Artiscanctl
 
-A comprehensive software artifact scanning and analysis tool for Docker images and filesystems. Cartographer automatically detects packages, dependencies, and software components to provide detailed insights into your software supply chain.
+A comprehensive software artifact scanning and analysis tool for Docker images and filesystems. Artiscanctl automatically detects packages, dependencies, and software components to provide detailed insights into your software supply chain.
 
 ## Supported Artifact Types
 
@@ -63,7 +63,7 @@ The following artifact types are defined in the codebase but do not yet have sca
 
 ## Output Format
 
-Cartographer outputs JSON reports with detected artifacts:
+Artiscanctl outputs JSON reports with detected artifacts:
 
 ```json
 {
@@ -126,7 +126,7 @@ Cartographer outputs JSON reports with detected artifacts:
     }
   },
   "metadata": {
-    "scanner_version": "2.0.0-modular",
+    "scanner_version": "2.0.0-artiscanctl",
     "scan_duration": "1.234s"
   }
 }
@@ -137,13 +137,13 @@ Cartographer outputs JSON reports with detected artifacts:
 ### Extract Package Information
 ```bash
 # Scan a Node.js application
-cartographer scan image node:18-alpine
+artiscanctl scan image node:18-alpine
 
 # Scan local project
-cartographer scan filesystem ./my-project
+artiscanctl scan filesystem ./my-project
 
 # Filter specific package types
-cartographer scan filesystem . | jq '.artifacts[] | select(.type == "npm-package")'
+artiscanctl scan filesystem . | jq '.artifacts[] | select(.type == "npm-package")'
 ```
 
 ## Development

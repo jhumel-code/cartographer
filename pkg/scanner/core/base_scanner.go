@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ianjhumelbautista/cartographer/pkg/artifact"
+	"github.com/jhumel-code/artiscanctl/pkg/artifact"
 )
 
 // BaseScanner provides common functionality for all scanners

@@ -10,8 +10,8 @@ import (
 	"strings"
 
 	v1 "github.com/google/go-containerregistry/pkg/v1"
-	"github.com/ianjhumelbautista/cartographer/pkg/artifact"
-	"github.com/ianjhumelbautista/cartographer/pkg/docker"
+	"github.com/jhumel-code/artiscanctl/pkg/artifact"
+	"github.com/jhumel-code/artiscanctl/pkg/docker"
 )
 
 // Manager coordinates multiple scanners and plugins to analyze sources

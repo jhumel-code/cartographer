@@ -3,7 +3,7 @@ package publishers
 import (
 	"testing"
 
-	"github.com/ianjhumelbautista/cartographer/pkg/artifact"
+	"github.com/jhumel-code/artiscanctl/pkg/artifact"
 )
 
 func TestVendorMapper_GetVendorInfo(t *testing.T) {

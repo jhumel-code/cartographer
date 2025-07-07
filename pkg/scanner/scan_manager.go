@@ -3,8 +3,8 @@ package scanner
 import (
 	"context"
 
-	"github.com/ianjhumelbautista/cartographer/pkg/artifact"
-	"github.com/ianjhumelbautista/cartographer/pkg/docker"
+	"github.com/jhumel-code/artiscanctl/pkg/artifact"
+	"github.com/jhumel-code/artiscanctl/pkg/docker"
 )
 
 // PluginType represents the type of plugin to enable

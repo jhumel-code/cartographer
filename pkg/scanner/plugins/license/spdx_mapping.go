@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/ianjhumelbautista/cartographer/pkg/artifact"
+	"github.com/jhumel-code/artiscanctl/pkg/artifact"
 )
 
 // SPDX license identifier constants

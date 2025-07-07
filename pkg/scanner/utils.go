@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ianjhumelbautista/cartographer/pkg/artifact"
+	"github.com/jhumel-code/artiscanctl/pkg/artifact"
 )
 
 // generateCollectionID generates a unique ID for a collection

@@ -1,7 +1,7 @@
 package package_managers
 
 import (
-	"github.com/ianjhumelbautista/cartographer/pkg/scanner/core"
+	"github.com/jhumel-code/artiscanctl/pkg/scanner/core"
 )
 
 // Scanner name constants

@@ -3,7 +3,7 @@ package publishers
 import (
 	"context"
 
-	"github.com/ianjhumelbautista/cartographer/pkg/artifact"
+	"github.com/jhumel-code/artiscanctl/pkg/artifact"
 )
 
 // VendorMappingPlugin enhances package artifacts with vendor information

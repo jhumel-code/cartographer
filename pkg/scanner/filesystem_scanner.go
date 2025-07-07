@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/ianjhumelbautista/cartographer/pkg/artifact"
+	"github.com/jhumel-code/artiscanctl/pkg/artifact"
 )
 
 // FilesystemScanner handles scanning of filesystem paths

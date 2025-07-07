@@ -3,8 +3,8 @@ package infrastructure
 import (
 	"context"
 
-	"github.com/ianjhumelbautista/cartographer/pkg/artifact"
-	"github.com/ianjhumelbautista/cartographer/pkg/scanner/core"
+	"github.com/jhumel-code/artiscanctl/pkg/artifact"
+	"github.com/jhumel-code/artiscanctl/pkg/scanner/core"
 )
 
 // KubernetesScanner scans for Kubernetes manifest files

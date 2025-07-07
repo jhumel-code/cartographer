@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/ianjhumelbautista/cartographer/pkg/artifact"
-	"github.com/ianjhumelbautista/cartographer/pkg/docker"
+	"github.com/jhumel-code/artiscanctl/pkg/artifact"
+	"github.com/jhumel-code/artiscanctl/pkg/docker"
 )
 
 // TestModularArchitecture tests the basic functionality of the modular scanner architecture

@@ -1,10 +1,10 @@
 package plugins
 
 import (
-	"github.com/ianjhumelbautista/cartographer/pkg/scanner/plugins/dependency"
-	"github.com/ianjhumelbautista/cartographer/pkg/scanner/plugins/license"
-	"github.com/ianjhumelbautista/cartographer/pkg/scanner/plugins/publishers"
-	"github.com/ianjhumelbautista/cartographer/pkg/scanner/plugins/security"
+	"github.com/jhumel-code/artiscanctl/pkg/scanner/plugins/dependency"
+	"github.com/jhumel-code/artiscanctl/pkg/scanner/plugins/license"
+	"github.com/jhumel-code/artiscanctl/pkg/scanner/plugins/publishers"
+	"github.com/jhumel-code/artiscanctl/pkg/scanner/plugins/security"
 )
 
 // PluginRegistry provides access to all modular plugins

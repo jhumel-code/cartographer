@@ -4,7 +4,7 @@ import (
 	"context"
 	"io"
 
-	"github.com/ianjhumelbautista/cartographer/pkg/artifact"
+	"github.com/jhumel-code/artiscanctl/pkg/artifact"
 )
 
 // LayerScanner defines the interface for scanners that can process Docker layer content

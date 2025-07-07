@@ -7,8 +7,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/ianjhumelbautista/cartographer/pkg/docker"
-	"github.com/ianjhumelbautista/cartographer/pkg/scanner"
+	"github.com/jhumel-code/artiscanctl/pkg/docker"
+	"github.com/jhumel-code/artiscanctl/pkg/scanner"
 )
 
 func main() {
@@ -19,8 +19,8 @@ func main() {
 		fmt.Println("  scan filesystem <path>    - Scan a filesystem path")
 		fmt.Println()
 		fmt.Println("Examples:")
-		fmt.Println("  cartographer scan image nginx:latest")
-		fmt.Println("  cartographer scan filesystem /usr/local")
+		fmt.Println("  artiscanctl scan image nginx:latest")
+		fmt.Println("  artiscanctl scan filesystem /usr/local")
 		os.Exit(1)
 	}
 

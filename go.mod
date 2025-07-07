@@ -1,4 +1,4 @@
-module github.com/ianjhumelbautista/cartographer
+module github.com/jhumel-code/artiscanctl
 
 go 1.23.4
 

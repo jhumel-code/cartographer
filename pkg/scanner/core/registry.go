@@ -6,7 +6,7 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/ianjhumelbautista/cartographer/pkg/artifact"
+	"github.com/jhumel-code/artiscanctl/pkg/artifact"
 )
 
 // ScannerRegistry manages all available scanners

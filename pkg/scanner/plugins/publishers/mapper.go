@@ -3,7 +3,7 @@ package publishers
 import (
 	"strings"
 
-	"github.com/ianjhumelbautista/cartographer/pkg/artifact"
+	"github.com/jhumel-code/artiscanctl/pkg/artifact"
 )
 
 // Common vendor/publisher constants

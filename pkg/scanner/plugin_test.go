@@ -4,10 +4,10 @@ import (
 	"context"
 	"testing"
 
-	"github.com/ianjhumelbautista/cartographer/pkg/artifact"
-	"github.com/ianjhumelbautista/cartographer/pkg/scanner/plugins/license"
-	"github.com/ianjhumelbautista/cartographer/pkg/scanner/plugins/publishers"
-	"github.com/ianjhumelbautista/cartographer/pkg/scanner/plugins/security"
+	"github.com/jhumel-code/artiscanctl/pkg/artifact"
+	"github.com/jhumel-code/artiscanctl/pkg/scanner/plugins/license"
+	"github.com/jhumel-code/artiscanctl/pkg/scanner/plugins/publishers"
+	"github.com/jhumel-code/artiscanctl/pkg/scanner/plugins/security"
 )
 
 const (

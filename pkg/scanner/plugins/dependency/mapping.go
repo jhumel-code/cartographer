@@ -3,8 +3,8 @@ package dependency
 import (
 	"context"
 
-	"github.com/ianjhumelbautista/cartographer/pkg/artifact"
-	"github.com/ianjhumelbautista/cartographer/pkg/scanner"
+	"github.com/jhumel-code/artiscanctl/pkg/artifact"
+	"github.com/jhumel-code/artiscanctl/pkg/scanner"
 )
 
 // DependencyMappingPlugin analyzes and maps dependencies between artifacts

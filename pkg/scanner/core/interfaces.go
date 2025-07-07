@@ -4,7 +4,7 @@ import (
 	"context"
 	"io"
 
-	"github.com/ianjhumelbautista/cartographer/pkg/artifact"
+	"github.com/jhumel-code/artiscanctl/pkg/artifact"
 )
 
 // Scanner defines the interface for all artifact scanners

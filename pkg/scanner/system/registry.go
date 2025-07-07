@@ -1,7 +1,7 @@
 package system
 
 import (
-	"github.com/ianjhumelbautista/cartographer/pkg/scanner/core"
+	"github.com/jhumel-code/artiscanctl/pkg/scanner/core"
 )
 
 // GetSystemRegistry returns a registry with all system scanners pre-registered

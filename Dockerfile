@@ -28,15 +28,15 @@ RUN apk --no-cache add ca-certificates
 WORKDIR /root/
 
 # Copy the binary from builder stage
-COPY --from=builder /app/bin/cartographer .
+COPY --from=builder /app/bin/artiscanctl .
 
 # Make it executable
-RUN chmod +x ./cartographer
+RUN chmod +x ./artiscanctl
 
 # Create a non-root user
-RUN adduser -D -s /bin/sh cartographer
+RUN adduser -D -s /bin/sh artiscanctl
 
-USER cartographer
+USER artiscanctl
 
 # Command to run
-ENTRYPOINT ["./cartographer"]
+ENTRYPOINT ["./artiscanctl"]
